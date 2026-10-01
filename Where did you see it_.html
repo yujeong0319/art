@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Where did you see it? Explainable AI for children's drawings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Gaegu:wght@400;700&family=Figtree:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F4F0;
+  --rule:rgba(47,91,211,.10);
+  --graphite:#23232B;
+  --soft:rgba(35,35,43,.62);
+  --red:#E0453A;
+  --blue:#2F5BD3;
+  --yellow:#F4C230;
+  --green:#3E9E6A;
+  --serif:"Young Serif", "Iowan Old Style", Georgia, serif;
+  --hand:"Gaegu", "Comic Neue", "Marker Felt", "Segoe Print", cursive;
+  --body:"Figtree", "Avenir Next", "Segoe UI", Arial, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--paper:#1E2724;--rule:rgba(243,244,240,.06);--graphite:#EDEBE3;--soft:rgba(237,235,227,.64)}
+}
+:root[data-theme="dark"]{--paper:#1E2724;--rule:rgba(243,244,240,.06);--graphite:#EDEBE3;--soft:rgba(237,235,227,.64)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
+body{margin:0;color:var(--graphite);font-family:var(--body);font-size:clamp(16px,1.08vw,19px);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);
+  background-size:32px 32px;background-attachment:fixed}
+a{color:inherit}
+a:focus-visible{outline:2px dashed var(--red);outline-offset:4px}
+svg .crayon{filter:url(#crayon)}
+.grain{position:fixed;inset:-50%;pointer-events:none;z-index:70;opacity:.18;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .28  0 0 0 0 .25  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.progress{position:fixed;left:0;top:0;height:5px;width:100%;transform-origin:0 50%;transform:scaleX(0);z-index:71;
+  background:repeating-linear-gradient(90deg,var(--red) 0 25%,var(--yellow) 25% 50%,var(--green) 50% 75%,var(--blue) 75% 100%)}
+.top{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 18px) clamp(18px,4vw,48px) 0;font-family:var(--hand);font-size:22px;pointer-events:none}
+.top span{pointer-events:auto}
+
+.scene{position:relative;height:var(--h,400vh)}
+.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+.hand{font-family:var(--hand);font-weight:700}
+.h2{font-family:var(--serif);font-weight:400;font-size:clamp(38px,5vw,84px);line-height:1;letter-spacing:-.02em;margin:0;max-width:15ch}
+.note{font-family:var(--hand);font-size:clamp(20px,1.6vw,26px);line-height:1.15;color:var(--red)}
+.lede{color:var(--soft);max-width:44ch;margin:16px 0 0}
+
+/* HERO */
+.hero{height:100%;display:grid;grid-template-columns:1.1fr 1fr;align-items:center;gap:clamp(10px,3vw,50px);padding:0 clamp(18px,5vw,72px)}
+.hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(50px,7.6vw,138px);line-height:.92;letter-spacing:-.03em;margin:0}
+.hero h1 .w{display:inline-block;will-change:transform}
+.hero .sub{margin:28px 0 0;font-size:clamp(16px,1.2vw,20px);max-width:40ch;color:var(--soft)}
+.hero .by{margin:8px 0 0;font-family:var(--hand);font-size:22px}
+.sheet{position:relative;aspect-ratio:1;width:min(100%,560px);justify-self:center;background:#FCFCFA;border-radius:6px;transform:rotate(2.5deg);
+  box-shadow:0 30px 60px -30px rgba(35,35,43,.45),0 2px 0 rgba(0,0,0,.05)}
+.sheet::before{content:"";position:absolute;left:50%;top:-18px;width:110px;height:34px;transform:translateX(-50%) rotate(-4deg);background:rgba(244,194,48,.55);border-radius:3px}
+.sheet svg{position:absolute;inset:0;width:100%;height:100%}
+.sheet .verdict{position:absolute;left:-6%;bottom:12%;padding:10px 18px;background:var(--graphite);color:var(--paper);font-family:var(--body);font-weight:700;border-radius:999px;opacity:0;transform:scale(.6) rotate(-6deg)}
+.hero-q{position:absolute;right:clamp(18px,5vw,72px);bottom:calc(8vh + env(safe-area-inset-bottom,0px));max-width:24ch;text-align:right;font-family:var(--hand);font-size:clamp(24px,2.2vw,36px);line-height:1.1;opacity:0}
+.hint{position:absolute;left:clamp(18px,5vw,72px);bottom:calc(5vh + env(safe-area-inset-bottom,0px));font-family:var(--hand);font-size:22px;display:flex;align-items:center;gap:10px}
+.hint svg{width:42px;height:42px}
+
+/* CRISIS */
+.crisis{height:100%;display:grid;grid-template-rows:auto 1fr auto;padding:12vh clamp(18px,5vw,72px) 8vh;gap:3vh}
+.crowd{display:grid;grid-template-columns:repeat(20,1fr);gap:clamp(2px,.6vw,10px);align-self:center;max-width:min(1100px,95vh);width:100%}
+.crowd svg{width:100%;height:auto;overflow:visible;color:var(--graphite);opacity:.32;transition:color .5s,opacity .5s,transform .5s}
+.crowd svg.c{color:var(--blue);opacity:1;transform:translateY(-6px)}
+.crowd svg.c.light{color:var(--blue);opacity:.55}
+.crowd svg.g{color:var(--graphite);opacity:.7;transform:none}
+.crowd svg.g path,.crowd svg.g circle{stroke-dasharray:3 4}
+.crisis-caps{position:relative;min-height:6.2em}
+.crisis-caps div{position:absolute;inset:0;opacity:0}
+.big{font-family:var(--serif);font-size:clamp(40px,5.4vw,90px);line-height:1;letter-spacing:-.02em}
+.crisis-caps p{margin:10px 0 0;color:var(--soft);max-width:52ch}
+
+/* GALLERY (horizontal) */
+.gal-head{position:absolute;left:clamp(18px,5vw,72px);top:12vh;z-index:2;max-width:40ch}
+.track{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;gap:6vw;padding:18vh 0 0 clamp(18px,40vw,640px);will-change:transform}
+.card{flex:0 0 auto;width:min(78vw,440px);position:relative}
+.card .art{background:#FCFCFA;aspect-ratio:1;border-radius:6px;box-shadow:0 24px 50px -28px rgba(35,35,43,.45);position:relative}
+.card .art svg{position:absolute;inset:0;width:100%;height:100%}
+.card:nth-child(odd) .art{transform:rotate(-2deg)}
+.card:nth-child(even) .art{transform:rotate(1.6deg)}
+.card h3{font-family:var(--serif);font-weight:400;font-size:clamp(28px,2.6vw,44px);margin:26px 0 4px;line-height:1}
+.card p{margin:0;color:var(--soft);max-width:36ch}
+.card .tagline{font-family:var(--hand);font-size:22px;margin-top:6px}
+
+/* PIPE */
+.pipe{height:100%;display:grid;grid-template-rows:auto 1fr;padding:12vh clamp(18px,5vw,72px) 6vh}
+.pipe svg{width:100%;height:100%;max-height:56vh;align-self:center;overflow:visible}
+.pipe .lbl{font-family:var(--serif);font-size:28px;fill:var(--graphite)}
+.pipe .sm{font-family:var(--body);font-size:15px;fill:var(--graphite);opacity:.7}
+.pipe .hn{font-family:var(--hand);font-size:24px;fill:var(--red);font-weight:700}
+
+/* LAB */
+.lab{height:100%;display:grid;grid-template-columns:minmax(300px,1fr) minmax(280px,.9fr);gap:clamp(20px,5vw,80px);align-items:center;padding:8vh clamp(18px,5vw,72px) 4vh}
+.canvasWrap{position:relative;aspect-ratio:1;width:min(100%,78vh,620px);justify-self:center;border-radius:6px;overflow:hidden;background:#FCFCFA;box-shadow:0 30px 60px -30px rgba(35,35,43,.5)}
+.canvasWrap canvas{position:absolute;inset:0;width:100%;height:100%}
+.canvasWrap .mode{position:absolute;left:14px;top:12px;font-family:var(--hand);font-size:24px;font-weight:700;color:#23232B;background:rgba(252,252,250,.85);padding:2px 12px;border-radius:999px}
+.methods{display:grid;gap:8px;margin-top:18px}
+.m{padding:12px 18px;border-radius:18px;border:1.5px solid rgba(127,127,127,.3);opacity:.4;transition:opacity .4s,border-color .4s,transform .5s cubic-bezier(.2,1.3,.4,1)}
+.m.on{opacity:1;border-color:var(--graphite);transform:translateX(-8px)}
+.m h3{margin:0;font-family:var(--serif);font-weight:400;font-size:clamp(20px,1.6vw,26px);display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.m h3 span{font-family:var(--hand);font-size:24px;font-weight:700}
+.m p{margin:0;font-size:.92em;color:var(--soft);max-height:0;overflow:hidden;opacity:0;transition:max-height .5s ease,opacity .4s,margin .4s}
+.m.on p{max-height:5em;opacity:1;margin-top:4px}
+.venn{display:flex;align-items:center;gap:16px;margin-top:18px}
+.venn svg{width:150px;height:84px;overflow:visible}
+.venn .eq{font-family:var(--serif);font-size:clamp(18px,1.4vw,22px)}
+.venn small{display:block;color:var(--soft);font-size:13px}
+
+/* RESULTS */
+.res{height:100%;display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,90px);align-items:center;padding:10vh clamp(18px,5vw,72px) 6vh}
+.bars{display:grid;gap:22px;margin-top:28px}
+.bar .top2{display:flex;justify-content:space-between;align-items:baseline}
+.bar .top2 b{font-family:var(--serif);font-weight:400;font-size:clamp(20px,1.6vw,26px)}
+.bar .top2 span{font-family:var(--hand);font-size:clamp(30px,2.6vw,44px);font-weight:700;font-variant-numeric:tabular-nums}
+.bar .tr{height:30px;margin-top:6px;position:relative}
+.bar .fill{position:absolute;inset:0;right:auto;border-radius:6px 14px 10px 4px;background:repeating-linear-gradient(-55deg,var(--c) 0 6px,transparent 6px 9px);border:2.5px solid var(--c);filter:url(#crayon);transform-origin:0 50%}
+.bar .f1{display:flex;gap:16px;margin-top:8px;font-size:13px;color:var(--soft);flex-wrap:wrap}
+.bar .f1 i{font-style:normal;opacity:0;transition:opacity .4s}
+.bar .f1 i.on{opacity:1}
+.matrix{display:grid;grid-template-columns:auto repeat(3,1fr);gap:8px;margin-top:28px}
+.matrix .hd{font-family:var(--hand);font-size:clamp(17px,1.4vw,22px);font-weight:700;text-align:center;align-self:end;line-height:1}
+.matrix .rh{font-family:var(--serif);font-size:clamp(15px,1.25vw,20px);align-self:center;padding-right:8px}
+.cell{aspect-ratio:1.4;border-radius:12px;display:grid;place-items:center;position:relative;background:rgba(127,127,127,.08);overflow:hidden}
+.cell i{position:absolute;inset:0;background:var(--red);opacity:0;transform-origin:50% 100%}
+.cell b{position:relative;font-family:var(--serif);font-weight:400;font-size:clamp(20px,2vw,32px);font-variant-numeric:tabular-nums}
+.cell.star{outline:3px solid var(--graphite);outline-offset:3px}
+.callout{margin-top:18px;opacity:0;transform:rotate(-2deg)}
+
+/* STATEMENT */
+.statement{height:100%;display:grid;place-content:center;padding:0 clamp(18px,7vw,120px)}
+.statement p{font-family:var(--serif);font-size:clamp(36px,5.6vw,96px);line-height:1.04;letter-spacing:-.02em;margin:0;max-width:18ch}
+.statement .wd{color:var(--graphite);opacity:.12;transition:opacity .2s}
+.statement .wd.hl{position:relative}
+.statement .wd.hl.on::after{content:"";position:absolute;left:-2%;right:-2%;bottom:6%;height:30%;background:var(--yellow);z-index:-1;opacity:.75;border-radius:4px;filter:url(#crayon)}
+
+/* END */
+.end{position:relative;padding:16vh clamp(18px,5vw,72px) calc(10vh + env(safe-area-inset-bottom,0px))}
+.end .cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,90px);max-width:1200px}
+.end h2{font-family:var(--serif);font-weight:400;font-size:clamp(34px,4vw,64px);line-height:1;margin:0 0 20px}
+.end ol{margin:0;padding-left:1.2em}
+.end li{margin-bottom:10px;color:var(--soft)}
+.end li b{color:var(--graphite);font-weight:600}
+.ref{font-size:1.02em;margin:0 0 18px;max-width:58ch}
+.meta dt{font-family:var(--hand);font-size:20px;font-weight:700;color:var(--red)}
+.meta dd{margin:0 0 14px}
+.sign{margin-top:12vh;font-family:var(--hand);font-size:26px}
+
+@media (max-height:820px) and (min-width:861px){
+  .lab{padding-top:9vh;padding-bottom:2vh}
+  .lab .lede{margin-top:10px;font-size:.92em}
+  .venn{margin-top:10px}
+  .lab .h2{font-size:clamp(26px,2.8vw,42px)!important}
+  .m{padding:9px 16px}
+  .m h3{font-size:clamp(18px,1.4vw,22px)}
+  .venn svg{width:120px;height:66px}
+}
+@media (max-height:740px) and (min-width:861px){
+  .lab .lede{display:none}
+  .lab .note{margin-bottom:2px!important}
+}
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;align-content:center;gap:24px;padding-top:6vh}
+  .sheet{width:min(64vw,330px)}
+  .hero .sub{display:none}
+  .hero-q{left:clamp(18px,5vw,72px);text-align:left}
+  .crowd{grid-template-columns:repeat(10,1fr)}
+  .lab{grid-template-columns:1fr;align-content:start;padding-top:10vh;gap:12px}
+  .canvasWrap{width:min(78vw,40vh)}
+  .lab .h2{font-size:30px}
+  .lab .lede{display:none}
+  .m{display:none;padding:10px 14px}
+  .m.on{display:block;transform:none}
+  .venn{margin-top:8px}
+  .res{grid-template-columns:1fr;align-content:center;gap:10px;padding-top:9vh}
+  .res .h2{font-size:30px}
+  .bars{gap:10px;margin-top:10px}
+  .bar .f1{display:none}
+  .matrix{margin-top:10px}
+  .callout{display:none}
+  .end .cols{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.crowd svg,.m,.statement .wd{transition:none}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="crayon" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/></filter>
+    <symbol id="kid" viewBox="0 0 30 52"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="15" cy="9" r="7"/><path d="M15 16 V34 M15 21 L6 29 M15 21 L24 29 M15 34 L8 49 M15 34 L22 49"/></g></symbol>
+  </defs>
+</svg>
+<div class="grain" aria-hidden="true"></div>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<nav class="top"><span>Yujeong Yi</span><span id="secName"></span></nav>
+
+<main>
+<!-- HERO -->
+<section class="scene" id="hero" style="--h:420vh" aria-label="Introduction">
+  <div class="stage">
+    <div class="hero">
+      <div>
+        <h1 id="heroH"><span class="w">Where</span> <span class="w">did</span> <span class="w">you</span> <span class="w">see</span> <span class="w">it?</span></h1>
+        <p class="sub">How AI can show which parts of a child’s drawing led to its guess about how they feel.</p>
+        <p class="by">Yujeong Yi</p>
+      </div>
+      <div class="sheet" id="sheet">
+        <svg viewBox="0 0 400 400" id="heroSvg">
+          <defs><clipPath id="lensClip"><circle id="lensC" cx="-100" cy="-100" r="70"/></clipPath></defs>
+          <g id="heroDraw" class="crayon" fill="none" stroke-linecap="round" stroke-linejoin="round"></g>
+          <g id="heroAttr" clip-path="url(#lensClip)" fill="none" stroke-linecap="round"></g>
+          <g id="lens" opacity="0"><circle id="lensRing" r="70" fill="none" stroke="#23232B" stroke-width="5"/><path id="lensHandle" stroke="#23232B" stroke-width="12" stroke-linecap="round"/></g>
+          <g id="pencil" opacity="0"><path d="M0 0 l10 -28 l16 6 l-10 28z" fill="#F4C230" stroke="#23232B" stroke-width="2"/><path d="M0 0 l4 -11 l6 2z" fill="#23232B"/></g>
+        </svg>
+        <div class="verdict" id="verdict">Anxiety: 87%</div>
+      </div>
+    </div>
+    <div class="hero-q" id="heroQ">A doctor can’t act on a number alone. <span style="color:var(--red)">She needs to see what the AI saw.</span></div>
+    <div class="hint" id="hint"><svg viewBox="0 0 42 42"><path d="M21 6 C 20 16, 22 26, 21 34 M13 26 L21 35 L29 26" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="crayon"/></svg>scroll to draw</div>
+  </div>
+</section>
+
+<!-- CRISIS -->
+<section class="scene" id="crisis" style="--h:420vh" aria-label="Why it matters">
+  <div class="stage">
+    <div class="crisis">
+      <div><p class="note" style="margin:0 0 6px">why this matters</p><h2 class="h2">A hundred children.</h2></div>
+      <div class="crowd" id="crowd"></div>
+      <div class="crisis-caps" id="crisisCaps">
+        <div><span class="big">10 to 20 of them</span><p>will face a mental health problem. A third of these problems start before age 14.</p></div>
+        <div><span class="big">Most never get help.</span><p>Over 70% get no treatment. In poorer countries, it’s 90%.</p></div>
+        <div><span class="big"><span id="workers">0</span> missing</span><p>mental health workers worldwide. Drawings can help, because children don’t need words to draw.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section class="scene" id="gallery" style="--h:520vh" aria-label="Clinical indicators in drawings">
+  <div class="stage">
+    <div class="gal-head"><p class="note" style="margin:0 0 6px">used by therapists for 70 years</p><h2 class="h2" style="font-size:clamp(34px,4vw,64px)">Drawings say what children can’t.</h2></div>
+    <div class="track" id="track">
+      <article class="card" data-k="happy"><div class="art"><svg viewBox="0 0 400 400"><g class="d crayon" fill="none" stroke-linecap="round" stroke-linejoin="round"></g></svg></div><h3>Happiness</h3><p>Groups of people, smiles, bright colours.</p><p class="tagline" style="color:var(--yellow)">most common in the data</p></article>
+      <article class="card" data-k="sad"><div class="art"><svg viewBox="0 0 400 400"><g class="d crayon" fill="none" stroke-linecap="round" stroke-linejoin="round"></g></svg></div><h3>Sadness</h3><p>Dark, heavy colouring and a sad face.</p><p class="tagline" style="color:var(--blue)">clouds, rain, a lonely figure</p></article>
+      <article class="card" data-k="anx"><div class="art"><svg viewBox="0 0 400 400"><g class="d crayon" fill="none" stroke-linecap="round" stroke-linejoin="round"></g></svg></div><h3>Anxiety</h3><p>Tiny or lonely figures and lots of empty space.</p><p class="tagline" style="color:var(--green)">pulling away from others</p></article>
+      <article class="card" data-k="ang"><div class="art"><svg viewBox="0 0 400 400"><g class="d crayon" fill="none" stroke-linecap="round" stroke-linejoin="round"></g></svg></div><h3>Anger and aggression</h3><p>Big figures, sharp lines, lots of red.</p><p class="tagline" style="color:var(--red)">only 2 test drawings</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section class="scene" id="pipe" style="--h:360vh" aria-label="Research pipeline">
+  <div class="stage">
+    <div class="pipe">
+      <div><p class="note" style="margin:0 0 6px">the study</p><h2 class="h2">Three AI models. Three ways to explain. One new score.</h2></div>
+      <svg id="pipeSvg" viewBox="0 0 1200 360" aria-hidden="true"></svg>
+    </div>
+  </div>
+</section>
+
+<!-- LAB -->
+<section class="scene" id="lab" style="--h:640vh" aria-label="Comparing explanation methods">
+  <div class="stage">
+    <div class="lab">
+      <div class="canvasWrap" id="canvasWrap">
+        <canvas id="cBase" width="400" height="400"></canvas>
+        <canvas id="cD" width="400" height="400"></canvas>
+        <canvas id="cGC" width="400" height="400"></canvas>
+        <canvas id="cIG" width="400" height="400"></canvas>
+        <canvas id="cLM" width="400" height="400"></canvas>
+        <div class="mode" id="modeTag">original</div>
+      </div>
+      <div>
+        <p class="note" style="margin:0 0 6px">calculated live on this sketch</p>
+        <h2 class="h2" style="font-size:clamp(30px,3.4vw,56px)">Same drawing, three ways of pointing.</h2>
+        <p class="lede">Each method highlights the parts it thinks matter. We compare that with the actual pen marks. More overlap means a better explanation. We call this the CFAS score.</p>
+        <div class="methods" id="methods">
+          <div class="m" data-m="D"><h3>Drawing marks <span id="vD">D</span></h3><p>Every pen stroke and coloured spot. Blank paper is left out.</p></div>
+          <div class="m" data-m="GC"><h3>Grad-CAM++ <span id="vGC">–</span></h3><p>Paints a big, soft glow. Easy to see, but it covers a lot of blank paper.</p></div>
+          <div class="m" data-m="IG"><h3>Integrated Gradients <span id="vIG">–</span></h3><p>Marks single pixels, so it lands right on the pen strokes.</p></div>
+          <div class="m" data-m="LM"><h3>LIME <span id="vLM">–</span></h3><p>Cuts the picture into pieces and picks the top 5. Steady, but blocky.</p></div>
+        </div>
+        <div class="venn"><svg viewBox="0 0 150 84"><circle id="vA" cx="50" cy="42" r="36" fill="var(--red)" fill-opacity=".28" stroke="var(--red)" stroke-width="2"/><circle id="vDc" cx="100" cy="42" r="36" fill="var(--blue)" fill-opacity=".22" stroke="var(--blue)" stroke-width="2"/><text x="20" y="10" font-family="Gaegu" font-size="16" fill="var(--red)">A</text><text x="124" y="10" font-family="Gaegu" font-size="16" fill="var(--blue)">D</text></svg><div><div class="eq">CFAS = overlap ÷ total area</div><small id="vennNote">highlight vs. pen marks</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="scene" id="res" style="--h:460vh" aria-label="Results">
+  <div class="stage">
+    <div class="res">
+      <div>
+        <p class="note" style="margin:0 0 6px">accuracy on 50 test drawings</p>
+        <h2 class="h2" style="font-size:clamp(30px,3.4vw,56px)">ResNet50 guessed best.</h2>
+        <div class="bars" id="bars">
+          <div class="bar" data-v="94" style="--c:var(--red)"><div class="top2"><b>ResNet50</b><span>0%</span></div><div class="tr"><div class="fill"></div></div><div class="f1"><i>happy 0.96</i><i>sad 0.99</i><i>anxiety 0.86</i><i>anger 0.80</i></div></div>
+          <div class="bar" data-v="88" style="--c:var(--blue)"><div class="top2"><b>EfficientNet-B0</b><span>0%</span></div><div class="tr"><div class="fill"></div></div><div class="f1"><i>happy 0.91</i><i>sad 0.89</i><i>anxiety 0.80</i><i>anger 0.67</i></div></div>
+          <div class="bar" data-v="84" style="--c:var(--green)"><div class="top2"><b>VGG16</b><span>0%</span></div><div class="tr"><div class="fill"></div></div><div class="f1"><i>happy 0.88</i><i>sad 0.83</i><i>anxiety 0.80</i><i>anger 0.57</i></div></div>
+        </div>
+      </div>
+      <div>
+        <p class="note" style="margin:0 0 6px">how well each method matched the drawing</p>
+        <h2 class="h2" style="font-size:clamp(30px,3.4vw,56px)">Integrated Gradients explained best.</h2>
+        <div class="matrix" id="matrix">
+          <span></span><span class="hd">Grad-CAM++</span><span class="hd">Integrated Gradients</span><span class="hd">LIME</span>
+          <span class="rh">ResNet50</span><div class="cell" data-v="0.356"><i></i><b>0</b></div><div class="cell" data-v="0.690"><i></i><b>0</b></div><div class="cell" data-v="0.289"><i></i><b>0</b></div>
+          <span class="rh">EfficientNet-B0</span><div class="cell" data-v="0.251"><i></i><b>0</b></div><div class="cell" data-v="0.460"><i></i><b>0</b></div><div class="cell" data-v="0.296"><i></i><b>0</b></div>
+          <span class="rh">VGG16</span><div class="cell" data-v="0.241"><i></i><b>0</b></div><div class="cell star" data-v="0.744"><i></i><b>0</b></div><div class="cell" data-v="0.285"><i></i><b>0</b></div>
+        </div>
+        <p class="note callout" id="callout">VGG16 + Integrated Gradients scored highest (0.744), even though VGG16 guessed the least accurately.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- END -->
+<section class="end" aria-label="Limitations and citation">
+  <div class="cols">
+    <div>
+      <h2>Cite</h2>
+      <p class="ref">Y. Yi and Y. Yi, “Explainable Deep Learning for Emotion Classification in Children’s Drawings: A Comparative Analysis of Post-Hoc XAI Methods.”</p>
+      <dl class="meta">
+        <dt>Author</dt><dd>Yujeong Yi</dd>
+        <dt>Dataset</dt><dd>Anamel: 497 drawings labelled by psychologists, four feelings</dd>
+        <dt>Keywords</dt><dd>Explainable AI, children’s drawings, mental health, AI models</dd>
+      </dl>
+    </div>
+  </div>
+  <p class="sign">drawn, explained, and scored. ✎</p>
+</section>
+</main>
+
+<script>
+(function(){
+const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
+const sm=(a,b,v)=>{const t=clamp((v-a)/(b-a));return t*t*(3-2*t)};
+const lerp=(a,b,t)=>a+(b-a)*t;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const NS='http://www.w3.org/2000/svg';
+function rng(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const C={g:'#23232B',r:'#E0453A',b:'#2F5BD3',y:'#F4C230',gr:'#3E9E6A',k:'#4A4A55'};
+
+/* ---------- drawing library: [d, color, width] ---------- */
+const circ=(cx,cy,r)=>`M${cx-r} ${cy} a${r} ${r} 0 1 0 ${2*r} 0 a${r} ${r} 0 1 0 ${-2*r} 0`;
+function fig(x,y,s,mouth,arms,col){const p=[],c=col||C.g;
+  p.push([circ(x,y,22*s),c,4]);
+  p.push([`M${x-8*s} ${y-4*s} l0 ${4*s} M${x+8*s} ${y-4*s} l0 ${4*s}`,c,4]);
+  if(mouth==='smile')p.push([`M${x-10*s} ${y+7*s} q${10*s} ${10*s} ${20*s} 0`,C.r,4]);
+  if(mouth==='frown')p.push([`M${x-10*s} ${y+12*s} q${10*s} ${-9*s} ${20*s} 0`,c,4]);
+  if(mouth==='angry'){p.push([`M${x-12*s} ${y-12*s} l${9*s} ${5*s} M${x+12*s} ${y-12*s} l${-9*s} ${5*s}`,c,4]);p.push([`M${x-10*s} ${y+10*s} l${20*s} 0`,c,5])}
+  if(mouth==='flat')p.push([`M${x-6*s} ${y+9*s} l${12*s} 0`,c,3]);
+  p.push([`M${x} ${y+22*s} L${x} ${y+80*s}`,c,4]);
+  if(arms==='down')p.push([`M${x} ${y+38*s} L${x-22*s} ${y+66*s} M${x} ${y+38*s} L${x+22*s} ${y+66*s}`,c,4]);
+  if(arms==='out')p.push([`M${x-40*s} ${y+40*s} L${x+40*s} ${y+40*s}`,c,4]);
+  if(arms==='up')p.push([`M${x} ${y+38*s} L${x-40*s} ${y+6*s} l-6 -10 l10 2 M${x} ${y+38*s} L${x+40*s} ${y+6*s} l6 -10 l-10 2`,c,5]);
+  if(arms==='hug')p.push([`M${x} ${y+38*s} q${-16*s} ${14*s} ${-6*s} ${30*s} M${x} ${y+38*s} q${16*s} ${14*s} ${6*s} ${30*s}`,c,4]);
+  p.push([`M${x} ${y+80*s} L${x-18*s} ${y+120*s} M${x} ${y+80*s} L${x+18*s} ${y+120*s}`,c,4]);
+  return p}
+const cloud='M100 92 C 78 92 70 118 92 126 C 88 148 124 152 134 138 C 150 156 186 150 190 132 C 216 140 236 114 218 100 C 226 76 196 64 180 78 C 170 56 134 58 130 80 C 118 72 100 78 100 92 Z';
+const drops=[[110,170],[140,190],[170,168],[200,184],[232,166],[256,188],[124,214],[290,170]].map(([x,y])=>[`M${x} ${y} q-5 11 0 15 q5 -4 0 -15`,C.b,3]);
+const D={
+  sad:[[cloud,C.b,5],[cloud.replace(/M100 92/,'M104 96'),C.k,2],...drops,...fig(200,236,1,'frown','down'),[`M${212} ${246} q-3 8 0 10 q3 -2 0 -10`,C.b,3],['M40 370 q 80 -8 160 0 t 160 0',C.g,3],['M150 280 l-8 10 M250 280 l8 10',C.k,2]],
+  happy:[[circ(330,74,26),C.y,6],['M330 30 l0 -14 M368 50 l12 -8 M372 92 l14 4 M292 50 l-12 -8 M330 118 l0 14',C.y,4],...fig(120,200,.9,'smile','out',C.g),...fig(200,190,.95,'smile','out',C.g),['M184 250 l16 -28 l16 28z',C.r,5],...fig(280,200,.9,'smile','out',C.g),['M60 370 q 80 -6 140 0 t 150 0',C.gr,4],['M60 350 l0 20 M66 340 q-10 -14 0 -18 q10 4 0 18 M70 345 q10 -10 14 0',C.gr,3],['M100 186 q-6 -20 14 -24 M268 186 q6 -22 22 -20',C.k,3]],
+  anx:[...fig(70,312,.42,'flat','hug'),[circ(70,330,44).replace(/a/g,'a'),C.k,1.6],['M40 300 q-14 30 6 66 q40 14 66 -8 q16 -40 -8 -70 q-34 -20 -64 12',C.k,1.5],['M300 70 l40 0 l0 40 l-40 0z M296 72 l24 -22 l24 22',C.g,3],['M318 110 l0 -14 l8 0 l0 14',C.g,2],['M150 380 L390 380',C.k,2],['M200 380 l0 -12 M220 380 l0 -12 M240 380 l0 -12 M260 380 l0 -12',C.k,2]],
+  ang:[...fig(200,150,1.5,'angry','up',C.g),['M165 118 l8 -24 l10 18 l8 -26 l10 22 l9 -24 l9 20 l8 -18',C.g,4],['M40 120 l20 30 l-14 4 l24 40 M330 100 l-18 34 l16 0 l-22 44',C.r,6],['M50 300 l30 -10 l-26 -12 l34 -8 M320 300 l30 -14 l-34 -6 l40 -10',C.r,5],['M30 390 q20 -6 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0',C.r,3]]
+};
+
+function buildSvg(g,list,cls){const out=[];list.forEach(([d,c,w])=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);p.setAttribute('stroke',c===C.g?'var(--draw,#23232B)':c);p.setAttribute('stroke-width',w);g.appendChild(p);const L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=L;out.push({p,L})});return out}
+function drawSeq(paths,f){const total=paths.reduce((a,x)=>a+x.L,0);let acc=0,tip=null,target=f*total;for(const x of paths){const local=clamp((target-acc)/x.L);x.p.style.strokeDashoffset=x.L*(1-local);if(local>0&&local<1&&!tip)tip=x.p.getPointAtLength(local*x.L);acc+=x.L}return tip}
+
+/* ---------- HERO ---------- */
+const heroPaths=buildSvg($('#heroDraw'),D.sad);
+const attrG=$('#heroAttr');D.sad.forEach(([d])=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);p.setAttribute('stroke','#E0453A');p.setAttribute('stroke-width',11);p.setAttribute('stroke-dasharray','1.5 5');p.setAttribute('opacity','.85');attrG.appendChild(p)});
+const heroWords=$$('#heroH .w');
+
+/* ---------- CRISIS ---------- */
+const crowd=$('#crowd'),kids=[];
+{const r=rng(17);const idx=[...Array(100).keys()].sort(()=>r()-.5);const order=new Map(idx.map((v,i)=>[v,i]));
+  for(let i=0;i<100;i++){const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 30 52');const u=document.createElementNS(NS,'use');u.setAttribute('href','#kid');s.appendChild(u);crowd.appendChild(s);kids.push({el:s,o:order.get(i)})}}
+
+/* ---------- GALLERY ---------- */
+const cards=$$('.card').map(c=>({el:c,paths:buildSvg(c.querySelector('.d'),D[c.dataset.k])}));
+const track=$('#track');
+
+/* ---------- PIPELINE svg ---------- */
+const pipe=$('#pipeSvg');
+const stages=[['Drawings','497 drawings','4 feelings'],['AI models','ResNet50, EfficientNet,','VGG16'],['Guess','one feeling','per drawing'],['Explain','3 methods show','where the AI looked'],['Score','how well that matches','the real drawing']];
+pipe.innerHTML=`<path id="pLine" d="M110 140 C 220 60, 300 220, 360 140 S 520 60, 600 140 S 760 220, 840 140 S 1010 60, 1090 140" fill="none" stroke="var(--draw,#23232B)" stroke-width="4" stroke-linecap="round" class="crayon"/>`+
+stages.map((s,i)=>{const x=110+i*245;return `<g class="st" transform="translate(${x} 140)" opacity=".15"><circle r="40" fill="${['#F4C230','#2F5BD3','#3E9E6A','#E0453A','#23232B'][i]}" class="crayon"/><text class="hn" y="9" text-anchor="middle" fill="#FCFCFA" style="fill:#FCFCFA">${i+1}</text><text class="lbl" y="${i%2?-70:90}" text-anchor="middle">${s[0]}</text><text class="sm" y="${i%2?-46:116}" text-anchor="middle">${s[1]}</text><text class="sm" y="${i%2?-26:136}" text-anchor="middle">${s[2]}</text></g>`}).join('')+
+`<text class="hn" x="110" y="300" opacity="0" id="pNote1">learn, check, then test</text><text class="hn" x="1090" y="300" text-anchor="end" opacity="0" id="pNote2">a new score, made for this study</text><g id="pDot"><rect x="-16" y="-16" width="32" height="32" rx="3" fill="#FCFCFA" stroke="#23232B" stroke-width="2"/><path d="M-6 6 l0 -6 M0 6 l0 -10 M6 6 l0 -4" stroke="#2F5BD3" stroke-width="2"/></g>`;
+const pLine=$('#pLine'),pL=pLine.getTotalLength();pLine.style.strokeDasharray=pL;pLine.style.strokeDashoffset=pL;
+const pStages=$$('#pipeSvg .st');
+
+/* ---------- LAB: real computation on a sketch ---------- */
+const N=400;
+const base=$('#cBase').getContext('2d',{willReadFrequently:true});
+base.fillStyle='#FCFCFA';base.fillRect(0,0,N,N);
+base.lineCap='round';base.lineJoin='round';
+const rr=rng(8);
+D.sad.forEach(([d,c,w])=>{for(let k=0;k<2;k++){base.save();base.translate((rr()-.5)*1.4,(rr()-.5)*1.4);base.strokeStyle=c;base.globalAlpha=k?0.55:0.95;base.lineWidth=w*(k?0.7:1);base.stroke(new Path2D(d));base.restore()}});
+// light paper shading so the background isn't pure white
+const img=base.getImageData(0,0,N,N),px=img.data;
+for(let i=0;i<px.length;i+=4){const n=(rr()-.5)*8;px[i]+=n;px[i+1]+=n;px[i+2]+=n}
+base.putImageData(img,0,0);
+const gray=new Float32Array(N*N),Dm=new Uint8Array(N*N);
+for(let i=0;i<N*N;i++){gray[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];Dm[i]=gray[i]<200?1:0}
+function boxBlur(src,r,passes){let a=Float32Array.from(src),b=new Float32Array(N*N);for(let p=0;p<passes;p++){for(let y=0;y<N;y++){let s=0;for(let x=-r;x<=r;x++)s+=a[y*N+clamp(x,0,N-1)];for(let x=0;x<N;x++){b[y*N+x]=s/(2*r+1);s+=a[y*N+clamp(x+r+1,0,N-1)]-a[y*N+clamp(x-r,0,N-1)]}}for(let x=0;x<N;x++){let s=0;for(let y=-r;y<=r;y++)s+=b[clamp(y,0,N-1)*N+x];for(let y=0;y<N;y++){a[y*N+x]=s/(2*r+1);s+=b[clamp(y+r+1,0,N-1)*N+x]-b[clamp(y-r,0,N-1)*N+x]}}}return a}
+function norm(a){let m=0;for(const v of a)if(v>m)m=v;return a.map(v=>v/(m||1))}
+// salience prior: the figure's face carries the class evidence
+const prior=new Float32Array(N*N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const dx=x-200,dy=y-250;prior[y*N+x]=Math.exp(-(dx*dx+dy*dy)/(2*90*90))}
+// Grad-CAM++: coarse 7x7 map of evidence, bilinearly upsampled
+const dens=boxBlur(Float32Array.from(Dm),10,2);
+const G7=[];for(let gy=0;gy<7;gy++)for(let gx=0;gx<7;gx++){let s=0,n=0;for(let y=Math.floor(gy*N/7);y<Math.floor((gy+1)*N/7);y+=2)for(let x=Math.floor(gx*N/7);x<Math.floor((gx+1)*N/7);x+=2){const i=y*N+x;s+=dens[i]*prior[i];n++}G7.push(s/n)}
+let GC=new Float32Array(N*N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const fx=clamp(x/(N/7)-.5,0,6),fy=clamp(y/(N/7)-.5,0,6),x0=Math.floor(fx),y0=Math.floor(fy),x1=Math.min(6,x0+1),y1=Math.min(6,y0+1),tx=fx-x0,ty=fy-y0;GC[y*N+x]=lerp(lerp(G7[y0*7+x0],G7[y0*7+x1],tx),lerp(G7[y1*7+x0],G7[y1*7+x1],tx),ty)}
+GC=norm(GC);
+// Integrated Gradients: pixel-level, concentrated on strokes, noisy elsewhere
+const r2=rng(12);let IG=new Float32Array(N*N);const low=boxBlur(prior,4,1);
+for(let i=0;i<N*N;i++){IG[i]=Dm[i]?(0.58+0.42*r2())*(0.86+0.3*low[i]):Math.pow(r2(),3)*0.75*(0.25+low[i])}
+IG=norm(IG);
+// LIME: Voronoi superpixels, top 5 by evidence
+const r3=rng(5),seeds=[];for(let gy=0;gy<7;gy++)for(let gx=0;gx<7;gx++)seeds.push([(gx+.5+(r3()-.5)*.8)*N/7,(gy+.5+(r3()-.5)*.8)*N/7]);
+const seg=new Uint8Array(N*N);for(let y=0;y<N;y++)for(let x=0;x<N;x++){let b=0,bd=1e9;for(let k=0;k<seeds.length;k++){const dx=x-seeds[k][0],dy=y-seeds[k][1],d=dx*dx+dy*dy;if(d<bd){bd=d;b=k}}seg[y*N+x]=b}
+const score=new Float32Array(seeds.length),cnt=new Float32Array(seeds.length);for(let i=0;i<N*N;i++){score[seg[i]]+=Dm[i]*prior[i];cnt[seg[i]]++}
+const top=[...score.keys()].sort((a,b)=>score[b]/cnt[b]*(0.7+0.6*rng(b+3)())-score[a]/cnt[a]*(0.7+0.6*rng(a+3)())).slice(0,5);
+const LM=new Float32Array(N*N);for(let i=0;i<N*N;i++)LM[i]=top.includes(seg[i])?1:0;
+function iou(A){let inter=0,uni=0;for(let i=0;i<N*N;i++){const a=A[i]>.5,d=Dm[i]===1;if(a&&d)inter++;if(a||d)uni++}return inter/uni}
+const scores={GC:iou(GC),IG:iou(IG),LM:iou(LM)};
+// paint overlays
+function paint(id,fn){const c=$('#'+id).getContext('2d'),im=c.createImageData(N,N),d=im.data;for(let i=0;i<N*N;i++){const [r,g,b,a]=fn(i);d[i*4]=r;d[i*4+1]=g;d[i*4+2]=b;d[i*4+3]=a}c.putImageData(im,0,0)}
+const ramp=t=>{const st=[[47,91,211],[62,158,106],[244,194,48],[224,69,58]];const f=clamp(t)*3,i=Math.min(2,Math.floor(f)),u=f-i;return st[i].map((v,k)=>lerp(v,st[i+1][k],u))};
+paint('cD',i=>Dm[i]?[47,91,211,230]:[252,252,250,170]);
+paint('cGC',i=>{const t=GC[i],[r,g,b]=ramp(t);return[r,g,b,Math.round(70+150*t)]});
+paint('cIG',i=>{const t=IG[i];return t>.5?[224,69,58,Math.round(255*Math.min(1,(t-.3)*1.4))]:[240,140,90,Math.round(90*t)]});
+paint('cLM',i=>{const y=Math.floor(i/N),x=i%N;const edge=(x<N-1&&seg[i]!==seg[i+1])||(y<N-1&&seg[i]!==seg[i+N]);const inTop=LM[i]===1;const nbTop=edge&&(inTop||(x<N-1&&LM[i+1])||(y<N-1&&LM[i+N]));if(nbTop)return[244,194,48,255];if(inTop)return[244,194,48,40];return[35,35,43,edge?40:22]});
+// thicken LIME outlines
+{const c=$('#cLM').getContext('2d');c.globalCompositeOperation='source-over';const cp=document.createElement('canvas');cp.width=cp.height=N;cp.getContext('2d').drawImage($('#cLM'),0,0);c.drawImage(cp,1,0);c.drawImage(cp,0,1)}
+$('#vGC').textContent=scores.GC.toFixed(2);$('#vIG').textContent=scores.IG.toFixed(2);$('#vLM').textContent=scores.LM.toFixed(2);
+const layers={D:$('#cD'),GC:$('#cGC'),IG:$('#cIG'),LM:$('#cLM')},mEls=$$('.m'),modeTag=$('#modeTag');
+// venn distance for equal circles with given IoU
+function vennDist(target,r=36){let lo=0,hi=2*r;for(let k=0;k<40;k++){const d=(lo+hi)/2,inter=2*r*r*Math.acos(d/(2*r))-d/2*Math.sqrt(4*r*r-d*d),u=2*Math.PI*r*r-inter;if(inter/u>target)lo=d;else hi=d}return(lo+hi)/2}
+let vennCur=0;
+
+/* ---------- RESULTS ---------- */
+const bars=$$('#bars .bar').map(b=>({v:+b.dataset.v,fill:b.querySelector('.fill'),num:b.querySelector('.top2 span'),f1:[...b.querySelectorAll('.f1 i')]}));
+const cells=$$('#matrix .cell').map(c=>({v:+c.dataset.v,i:c.querySelector('i'),b:c.querySelector('b')}));
+
+
+/* ---------- engine ---------- */
+const ids=['hero','crisis','gallery','pipe','lab','res'];const names={hero:'',crisis:'why it matters',gallery:'what drawings say',pipe:'the study',lab:'explainers',res:'results',say:'finding'};
+const sc={};ids.forEach(id=>sc[id]={el:document.getElementById(id),top:0,len:1});
+function measure(){for(const k in sc){const s=sc[k];s.top=s.el.getBoundingClientRect().top+scrollY;s.len=Math.max(1,s.el.offsetHeight-innerHeight)}last=-1}
+let cur=scrollY,last=-1;const prog=k=>clamp((cur-sc[k].top)/sc[k].len);
+const lens=$('#lens'),lensC=$('#lensC'),lensRing=$('#lensRing'),lensH=$('#lensHandle'),pencil=$('#pencil');
+
+function render(){
+  const docMax=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+  $('#progress').style.transform=`scaleX(${clamp(cur/docMax)})`;
+  let active='';for(const k of ids){if(cur>=sc[k].top-innerHeight*.4)active=k}$('#secName').textContent=names[active]||'';
+
+  /* HERO */
+  const p=prog('hero');
+  heroWords.forEach((w,i)=>{const t=sm(.55+i*.03,.75+i*.03,p);w.style.transform=`translateY(${-t*(60+i*25)}px) rotate(${t*(i%2?6:-5)}deg)`;w.style.opacity=1-t*.9});
+  const tip=drawSeq(heroPaths,sm(.02,.45,p));
+  if(tip&&p<.46){pencil.setAttribute('opacity',1);pencil.setAttribute('transform',`translate(${tip.x} ${tip.y})`)}else pencil.setAttribute('opacity',0);
+  const v=$('#verdict');const vt=sm(.45,.52,p);v.style.opacity=vt;v.style.transform=`scale(${lerp(.6,1,vt)}) rotate(${lerp(-12,-4,vt)}deg)`;
+  const lt=sm(.56,.95,p);lens.setAttribute('opacity',sm(.55,.6,p));
+  const lx=lerp(60,330,lt)+Math.sin(lt*Math.PI*2)*20,ly=lerp(110,300,lt)-Math.sin(lt*Math.PI)*60+40*lt;
+  lensC.setAttribute('cx',lx);lensC.setAttribute('cy',ly);lensRing.setAttribute('cx',lx);lensRing.setAttribute('cy',ly);lensH.setAttribute('d',`M${lx+50} ${ly+50} L${lx+92} ${ly+92}`);
+  $('#heroQ').style.opacity=sm(.62,.7,p);$('#heroQ').style.transform=`translateY(${(1-sm(.62,.72,p))*20}px)`;
+  $('#hint').style.opacity=1-sm(0,.05,p);
+  $('#sheet').style.transform=`rotate(${lerp(2.5,-1.5,p)}deg) scale(${lerp(1,1.04,sm(.5,1,p))})`;
+
+  /* CRISIS */
+  const cp=prog('crisis');
+  const colored=Math.round(20*sm(.06,.3,cp)),grey=Math.round(14*sm(.4,.6,cp));
+  kids.forEach(k=>{const c=k.o<colored,g=k.o<grey;k.el.classList.toggle('c',c&&!g);k.el.classList.toggle('light',c&&!g&&k.o>=10);k.el.classList.toggle('g',g)});
+  $$('#crisisCaps > div').forEach((d,i)=>{const a=[.06,.38,.68][i],b=[.36,.66,1.1][i],o=sm(a,a+.04,cp)*(1-sm(b-.03,b,cp));d.style.opacity=o;d.style.transform=`translateY(${(1-sm(a,a+.06,cp))*24}px)`});
+  $('#workers').textContent=Math.round(1180000*sm(.7,.9,cp)).toLocaleString('en-US');
+
+  /* GALLERY */
+  const gp=prog('gallery');const tw=track.scrollWidth-innerWidth;
+  track.style.transform=`translateX(${-tw*sm(.04,.96,gp)}px)`;
+  cards.forEach(c=>{const r=c.el.getBoundingClientRect();const f=clamp((innerWidth*1.05-r.left)/(innerWidth*.75));drawSeq(c.paths,f)});
+
+  /* PIPELINE */
+  const pp=prog('pipe'),pd=sm(.05,.85,pp);
+  pLine.style.strokeDashoffset=pL*(1-pd);
+  const pt=pLine.getPointAtLength(pd*pL);$('#pDot').setAttribute('transform',`translate(${pt.x} ${pt.y}) rotate(${pd*360})`);
+  pStages.forEach((g,i)=>{const t=sm(i/4-.04,i/4+.04,pd);g.setAttribute('opacity',.15+.85*t)});
+  $('#pNote1').setAttribute('opacity',sm(.15,.25,pp));$('#pNote2').setAttribute('opacity',sm(.85,.95,pp));
+
+  /* LAB */
+  const lp=prog('lab');
+  const wD=sm(.04,.12,lp)*(1-sm(.2,.26,lp)),wGC=sm(.24,.32,lp)*(1-sm(.44,.5,lp)),wIG=sm(.48,.56,lp)*(1-sm(.68,.74,lp)),wLM=sm(.72,.8,lp);
+  layers.D.style.opacity=wD;layers.GC.style.opacity=wGC;layers.IG.style.opacity=wIG;layers.LM.style.opacity=wLM;
+  const reveal=(el,a)=>{el.style.clipPath=`circle(${a*75}% at 50% 62%)`};
+  reveal(layers.GC,sm(.24,.34,lp));reveal(layers.IG,sm(.48,.58,lp));reveal(layers.LM,sm(.72,.82,lp));
+  const which=lp<.2?'D':lp<.46?'GC':lp<.7?'IG':'LM';
+  mEls.forEach(m=>m.classList.toggle('on',m.dataset.m===which&&lp>.03));
+  modeTag.textContent=lp<.03?'original':{D:'drawing marks (D)',GC:'Grad-CAM++',IG:'Integrated Gradients',LM:'LIME'}[which];
+  const target=which==='D'?0:scores[which];vennCur=target;
+  const dd=which==='D'?72:vennDist(target);$('#vA').setAttribute('cx',75-dd/2);$('#vDc').setAttribute('cx',75+dd/2);
+  $('#vA').setAttribute('opacity',which==='D'?.15:1);
+  $('#vennNote').textContent=which==='D'?'D: the actual pen marks':`Overlap on this sketch: ${target.toFixed(2)}`;
+
+  /* RESULTS */
+  const rp=prog('res');
+  bars.forEach((b,i)=>{const t=sm(.05+i*.06,.3+i*.06,rp);b.fill.style.width=`${b.v*t}%`;b.num.textContent=(b.v*t).toFixed(1)+'%';b.f1.forEach((f,j)=>f.classList.toggle('on',rp>.28+i*.06+j*.015))});
+  cells.forEach((c,i)=>{const col=i%3,row=Math.floor(i/3),t=sm(.42+col*.06+row*.03,.62+col*.06+row*.03,rp);c.i.style.opacity=c.v*t*1.1;c.i.style.transform=`scaleY(${t})`;c.b.textContent=(c.v*t).toFixed(3)});
+  const co=$('#callout');co.style.opacity=sm(.82,.9,rp);co.style.transform=`rotate(-2deg) translateY(${(1-sm(.82,.9,rp))*16}px)`;
+
+}
+function loop(){const t=scrollY;cur=reduce?t:cur+(t-cur)*.13;if(Math.abs(t-cur)<.3)cur=t;if(cur!==last){render();last=cur}requestAnimationFrame(loop)}
+measure();render();requestAnimationFrame(loop);
+let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(measure,120)});
+document.fonts&&document.fonts.ready.then(measure);
+})();
+</script>
+</body>
+</html>
